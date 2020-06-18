@@ -2,32 +2,16 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
-	"github.com/GuiaBolso/darwin"
 	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
+	"github.com/youssefnotes/ultimate-service/schema"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
-)
-
-var (
-	migrations = []darwin.Migration{
-		{
-			Version:     1,
-			Description: "Creating table products",
-			Script: `CREATE TABLE products (
-						product_id UUID, 
-						name 		TEXT,
-						price 		float8,
-						quantity 	float8,
-						date_created TIMESTAMP,
-						date_updated TIMESTAMP,
-						PRIMARY KEY (product_id)
-					 );`,
-		}}
 )
 
 func init() {
@@ -37,7 +21,7 @@ func init() {
 	}
 }
 func main() {
-	log.Println("main: Starting")
+	log.Println("main: Started")
 	defer log.Println("main: Completed")
 
 	// ============================================================================================================
@@ -51,8 +35,16 @@ func main() {
 	log.Println("db connected")
 	defer db.Close()
 
+	flag.Parse()
+	switch flag.Arg(0) {
+	case "migrate":
+		return
+	case "seed":
+		return
+	}
+
 	//migrations
-	err = Migrate(db)
+	err = schema.Migrate(db)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -61,12 +53,6 @@ func main() {
 	if err := http.ListenAndServe(address, http.HandlerFunc(getProducts)); err != nil {
 		log.Fatalln(err)
 	}
-}
-
-func Migrate(db *sqlx.DB) error {
-	driver := darwin.NewGenericDriver(db.DB, darwin.PostgresDialect{})
-	d := darwin.New(driver, migrations, nil)
-	return d.Migrate()
 }
 
 type Product struct {
