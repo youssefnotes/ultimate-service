@@ -38,17 +38,20 @@ func main() {
 	flag.Parse()
 	switch flag.Arg(0) {
 	case "migrate":
+		//migrations
+		if err = schema.Migrate(db); err != nil {
+			log.Fatalln(err)
+		}
+		log.Println("db migration complete")
 		return
 	case "seed":
+		if err = schema.Seed(db); err != nil {
+			log.Fatalln(err)
+		}
+		log.Println("db seed complete")
 		return
 	}
 
-	//migrations
-	err = schema.Migrate(db)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	log.Println("db migration complete")
 	address := fmt.Sprintf("%s:%s", os.Getenv("app_ip"), os.Getenv("app_port"))
 	if err := http.ListenAndServe(address, http.HandlerFunc(getProducts)); err != nil {
 		log.Fatalln(err)

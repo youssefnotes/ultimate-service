@@ -1,4 +1,4 @@
-module ultimate-service
+module github.com/youssefnotes/ultimate-service
 
 go 1.13
 
