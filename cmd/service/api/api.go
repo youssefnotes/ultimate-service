@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 	"github.com/youssefnotes/ultimate-service/cmd/service/api/internal"
 	"github.com/youssefnotes/ultimate-service/internal/platform/database"
@@ -18,6 +19,7 @@ func init() {
 		if err := viper.ReadInConfig(); err != nil {
 			if _, ok := err.(viper.ConfigFileNotFoundError); ok {
 				// Config file not found; ignore error if desired
+				log.Fatalln(err)
 			} else {
 				// Config file was found but another error was produced
 			}
@@ -27,30 +29,36 @@ func init() {
 	}
 }
 func main() {
-	log.Println("main: Started")
-	defer log.Println("main: Completed")
+	if err := run(); err != nil {
+		log.Fatalln(err)
+	}
+}
 
+func run() error {
+	log.Println("run: started")
+	defer log.Println("run: completed")
 	// ============================================================================================================
 	// setup dependency
 	// open database
 	db, err := database.Open(database.Config{
-		Sslmode:        viper.GetString("db_ssl_mode"),
-		Timezone:       viper.GetString("db_time_zone"),
-		DB_scheme:      viper.GetString("db_scheme"),
-		DB_user_name:   viper.GetString("db_user_name"),
-		DB_pass_word:   viper.GetString("db_pass_word"),
-		DB_ip:          viper.GetString("db_ip"),
-		DB_path:        viper.GetString("db_path"),
-		DB_driver_name: viper.GetString("db_driver_name"),
+		Sslmode:      viper.GetString("db_ssl_mode"),
+		Timezone:     viper.GetString("db_time_zone"),
+		DB_scheme:    viper.GetString("db_scheme"),
+		DB_user_name: viper.GetString("db_user_name"),
+		DB_pass_word: viper.GetString("db_pass_word"),
+		DB_ip:        viper.GetString("db_ip"),
+		DB_path:      viper.GetString("db_path"),
+		//DB_driver_name: viper.GetString("db_driver_name"),
 	})
 	if err != nil {
-		log.Fatalln(err)
+		return errors.Wrap(err, "run: opening db connection")
 	}
-	log.Println("db connected")
+	log.Println("run: db connected")
 	defer db.Close()
 
 	address := fmt.Sprintf("%s:%s", viper.GetString("app_ip"), viper.GetString("app_port"))
 	if err := http.ListenAndServe(address, http.HandlerFunc((&internal.ProductService{DB: db}).List)); err != nil {
-		log.Fatalln(err)
+		return errors.Wrap(err, "server listening")
 	}
+	return nil
 }
