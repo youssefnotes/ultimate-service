@@ -12,3 +12,13 @@ func List(db *sqlx.DB) ([]Product, error) {
 	}
 	return list, nil
 }
+
+func Retrieve(db *sqlx.DB, id string) (*Product, error) {
+	var p Product
+	q := `SELECT product_id, name, price, quantity, date_created, date_updated FROM products WHERE product_id = $1`
+	err := db.Get(&p, q, id)
+	if err != nil {
+		return nil, err
+	}
+	return &p, nil
+}

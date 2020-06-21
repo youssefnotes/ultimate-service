@@ -3,30 +3,20 @@ package database
 import (
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq" //register postgres driver
+	"github.com/youssefnotes/ultimate-service/internal/platform"
 	"net/url"
 )
 
-type Config struct {
-	Sslmode        string
-	Timezone       string
-	DB_scheme      string
-	DB_user_name   string
-	DB_pass_word   string
-	DB_ip          string
-	DB_path        string
-	DB_driver_name string
-}
-
-func Open(cfg Config) (*sqlx.DB, error) {
+func Open(dbCfg platform.DBCfg) (*sqlx.DB, error) {
 	q := url.Values{}
-	q.Set("sslmode", cfg.Sslmode)
-	q.Set("timezone", cfg.Timezone)
+	q.Set("sslmode", dbCfg.SSLmode)
+	q.Set("timezone", dbCfg.Timezone)
 	u := url.URL{
-		Scheme:   cfg.DB_scheme,
-		User:     url.UserPassword(cfg.DB_user_name, cfg.DB_pass_word),
-		Host:     cfg.DB_ip,
-		Path:     cfg.DB_path,
+		Scheme:   dbCfg.Scheme,
+		User:     url.UserPassword(dbCfg.Username, dbCfg.Password),
+		Host:     dbCfg.IP,
+		Path:     dbCfg.Path,
 		RawQuery: q.Encode(),
 	}
-	return sqlx.Open(cfg.DB_driver_name, u.String())
+	return sqlx.Open(dbCfg.DriverName, u.String())
 }

@@ -38,3 +38,27 @@ func (p ProductService) List(writer http.ResponseWriter, request *http.Request) 
 	}
 	return
 }
+
+func (p ProductService) Get(writer http.ResponseWriter, request *http.Request) {
+	id := ""
+	prod, err := product.Retrieve(p.DB, id)
+	if err != nil {
+		writer.WriteHeader(http.StatusInternalServerError)
+		p.Log.Println("product ", err)
+		return
+	}
+	resp, err := json.Marshal(prod)
+	if err != nil {
+		writer.WriteHeader(http.StatusInternalServerError)
+		p.Log.Println("marshal product ", err)
+		return
+	}
+	writer.Header().Set("content-type", "application/json")
+	writer.WriteHeader(http.StatusOK)
+	_, err = writer.Write(resp)
+	if err != nil {
+		p.Log.Println("get product ", err)
+		return
+	}
+	return
+}

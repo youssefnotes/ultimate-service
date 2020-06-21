@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"github.com/spf13/viper"
+	"github.com/youssefnotes/ultimate-service/internal/platform"
 	"github.com/youssefnotes/ultimate-service/internal/platform/database"
 	"github.com/youssefnotes/ultimate-service/internal/schema"
 	"log"
@@ -30,7 +31,7 @@ func main() {
 	// setup dependency
 
 	// open database
-	db, err := database.Open(database.Config{
+	db, err := database.Open(platform.Config{
 		Sslmode:        viper.GetString("db_ssl_mode"),
 		Timezone:       viper.GetString("db_time_zone"),
 		DB_scheme:      viper.GetString("db_scheme"),

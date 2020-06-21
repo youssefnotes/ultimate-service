@@ -5,13 +5,31 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 	"github.com/youssefnotes/ultimate-service/cmd/service/api/internal"
+	"github.com/youssefnotes/ultimate-service/internal/platform"
 	"github.com/youssefnotes/ultimate-service/internal/platform/database"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 )
 
 func init() {
+
+}
+func main() {
+	if err := run(); err != nil {
+		log.Fatalln(err)
+	}
+}
+
+func run() error {
+	log := log.New(os.Stdout, "sales service: ", log.LstdFlags)
+	log.Println("run: started")
+	defer log.Println("run: completed")
+
+	// ====================================================================================
+	// Configuration
 	if os.Getenv("ENVIRONMENT") == "DEV" {
 		viper.SetConfigName("config")
 		viper.SetConfigType("env")
@@ -27,39 +45,72 @@ func init() {
 	} else {
 		viper.AutomaticEnv()
 	}
-}
-func main() {
-	if err := run(); err != nil {
-		log.Fatalln(err)
+	cfg := platform.Config{
+		DB: platform.DBCfg{
+			SSLmode:    viper.GetString("db_ssl_mode"),
+			Timezone:   viper.GetString("db_time_zone"),
+			Scheme:     viper.GetString("db_scheme"),
+			Username:   viper.GetString("db_user_name"),
+			Password:   viper.GetString("db_pass_word"),
+			IP:         viper.GetString("db_ip"),
+			Path:       viper.GetString("db_path"),
+			DriverName: viper.GetString("db_driver_name"),
+		},
+		Web: platform.WebCfg{
+			APIHost:         viper.GetString("app_ip"),
+			Port:            viper.GetString("app_port"),
+			ReadTimeout:     viper.GetDuration("read_timeout"),
+			WriteTimeout:    viper.GetDuration("write_timeout"),
+			ShutdownTimeout: viper.GetDuration("shutdown_timeout"),
+		},
 	}
-}
 
-func run() error {
-	log := log.New(os.Stdout, "sales service: ", log.LstdFlags)
-	log.Println("run: started")
-	defer log.Println("run: completed")
-	// ============================================================================================================
-	// setup dependency
-	// open database
-	db, err := database.Open(database.Config{
-		Sslmode:        viper.GetString("db_ssl_mode"),
-		Timezone:       viper.GetString("db_time_zone"),
-		DB_scheme:      viper.GetString("db_scheme"),
-		DB_user_name:   viper.GetString("db_user_name"),
-		DB_pass_word:   viper.GetString("db_pass_word"),
-		DB_ip:          viper.GetString("db_ip"),
-		DB_path:        viper.GetString("db_path"),
-		DB_driver_name: viper.GetString("db_driver_name"),
-	})
+	// ====================================================================================
+	// Setting up dependency
+
+	// ====================================================================================
+	// Open Database
+	db, err := database.Open(cfg.DB)
 	if err != nil {
 		return errors.Wrap(err, "run: opening db connection")
 	}
 	log.Println("run: db connected")
 	defer db.Close()
 
-	address := fmt.Sprintf("%s:%s", viper.GetString("app_ip"), viper.GetString("app_port"))
-	if err := http.ListenAndServe(address, http.HandlerFunc((&internal.ProductService{DB: db, Log: log}).List)); err != nil {
-		return errors.Wrap(err, "server listening")
+	// ====================================================================================
+	// Starting Server
+
+	serverAddress := fmt.Sprintf("%s:%s", cfg.Web.APIHost, cfg.Web.Port)
+	apiServer := http.Server{
+		Addr:         serverAddress,
+		Handler:      internal.API(log, db),
+		TLSConfig:    nil,
+		ReadTimeout:  cfg.Web.ReadTimeout,
+		WriteTimeout: cfg.Web.WriteTimeout,
+		ErrorLog:     log,
 	}
+	serverError := make(chan error, 1)
+
+	// Start service to listen for incoming requests
+	go func() {
+		log.Println("run: listening on: ", serverAddress)
+		serverError <- apiServer.ListenAndServe()
+	}()
+
+	// Block and wait for shutdown
+	shutdown := make(chan os.Signal, 1)
+	signal.Notify(shutdown, os.Interrupt, syscall.SIGTERM)
+
+	select {
+	case err := <-serverError:
+		return errors.Wrap(err, "run: starting server")
+	case <-shutdown:
+		log.Println("run: starting shutdown")
+
+	}
+
+	// ====================================================================================
+	// Shut Down Server
+
 	return nil
 }
