@@ -79,7 +79,6 @@ func run() error {
 
 	// ====================================================================================
 	// Starting Server
-
 	serverAddress := fmt.Sprintf("%s:%s", cfg.Web.APIHost, cfg.Web.Port)
 	apiServer := http.Server{
 		Addr:         serverAddress,
@@ -97,10 +96,11 @@ func run() error {
 		serverError <- apiServer.ListenAndServe()
 	}()
 
-	// Block and wait for shutdown
+	// Make channel and listen for shutdown
 	shutdown := make(chan os.Signal, 1)
 	signal.Notify(shutdown, os.Interrupt, syscall.SIGTERM)
 
+	// Block and wait for shutdown
 	select {
 	case err := <-serverError:
 		return errors.Wrap(err, "run: starting server")
