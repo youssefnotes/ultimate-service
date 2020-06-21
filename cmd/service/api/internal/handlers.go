@@ -9,7 +9,8 @@ import (
 )
 
 type ProductService struct {
-	DB *sqlx.DB
+	DB  *sqlx.DB
+	Log *log.Logger
 }
 
 func (p ProductService) List(writer http.ResponseWriter, request *http.Request) {
@@ -17,14 +18,14 @@ func (p ProductService) List(writer http.ResponseWriter, request *http.Request) 
 	list, err := product.List(p.DB)
 	if err != nil {
 		writer.WriteHeader(http.StatusInternalServerError)
-		log.Println("product list ", err)
+		p.Log.Println("product list ", err)
 		return
 	}
 
 	resp, err := json.Marshal(list)
 	if err != nil {
 		writer.WriteHeader(http.StatusInternalServerError)
-		log.Println("marshal products ", err)
+		p.Log.Println("marshal products ", err)
 		return
 	}
 
@@ -32,7 +33,7 @@ func (p ProductService) List(writer http.ResponseWriter, request *http.Request) 
 	writer.WriteHeader(http.StatusOK)
 	_, err = writer.Write(resp)
 	if err != nil {
-		log.Println("get products ", err)
+		p.Log.Println("get products ", err)
 		return
 	}
 	return

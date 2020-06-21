@@ -19,7 +19,7 @@ func init() {
 		if err := viper.ReadInConfig(); err != nil {
 			if _, ok := err.(viper.ConfigFileNotFoundError); ok {
 				// Config file not found; ignore error if desired
-				log.Fatalln(err)
+				log.Fatalln("init: ", err)
 			} else {
 				// Config file was found but another error was produced
 			}
@@ -35,20 +35,21 @@ func main() {
 }
 
 func run() error {
+	log := log.New(os.Stdout, "sales service: ", log.LstdFlags)
 	log.Println("run: started")
 	defer log.Println("run: completed")
 	// ============================================================================================================
 	// setup dependency
 	// open database
 	db, err := database.Open(database.Config{
-		Sslmode:      viper.GetString("db_ssl_mode"),
-		Timezone:     viper.GetString("db_time_zone"),
-		DB_scheme:    viper.GetString("db_scheme"),
-		DB_user_name: viper.GetString("db_user_name"),
-		DB_pass_word: viper.GetString("db_pass_word"),
-		DB_ip:        viper.GetString("db_ip"),
-		DB_path:      viper.GetString("db_path"),
-		//DB_driver_name: viper.GetString("db_driver_name"),
+		Sslmode:        viper.GetString("db_ssl_mode"),
+		Timezone:       viper.GetString("db_time_zone"),
+		DB_scheme:      viper.GetString("db_scheme"),
+		DB_user_name:   viper.GetString("db_user_name"),
+		DB_pass_word:   viper.GetString("db_pass_word"),
+		DB_ip:          viper.GetString("db_ip"),
+		DB_path:        viper.GetString("db_path"),
+		DB_driver_name: viper.GetString("db_driver_name"),
 	})
 	if err != nil {
 		return errors.Wrap(err, "run: opening db connection")
@@ -57,7 +58,7 @@ func run() error {
 	defer db.Close()
 
 	address := fmt.Sprintf("%s:%s", viper.GetString("app_ip"), viper.GetString("app_port"))
-	if err := http.ListenAndServe(address, http.HandlerFunc((&internal.ProductService{DB: db}).List)); err != nil {
+	if err := http.ListenAndServe(address, http.HandlerFunc((&internal.ProductService{DB: db, Log: log}).List)); err != nil {
 		return errors.Wrap(err, "server listening")
 	}
 	return nil
